@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Enable docker experimental
+      run: |
+        echo '{"experimental":true,"exec-opts":["native.cgroupdriver=cgroupfs"],"cgroup-parent":"/actions_job"}' | sudo tee /etc/docker/daemon.json
+        sudo systemctl restart docker
+    - name: Checkout
+      uses: actions/checkout@v4
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Docker build and push
+      run: |
+        now=$(date --utc +"%Y.%-m.%-d.%-H.%-M.%-S")
+        img_name='ghcr.io/sa4zet-org/docker.img.debian'
+        docker build --squash -t $img_name:$now -t $img_name:latest .
+        docker push $img_name:$now
+        docker push $img_name:latest
